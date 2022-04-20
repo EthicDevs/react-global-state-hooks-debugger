@@ -34,6 +34,7 @@
     "emitDecoratorMetadata": true
   },
   "exclude": [
+    "*.css",
     "./debugger-ui",
     "./src/**/*.test.ts",
     "./dist",

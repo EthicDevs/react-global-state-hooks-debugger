@@ -1,3 +1,4 @@
+import { renderJSONTreeView } from "@ethicdevs/json-tree-view";
 import { updatedDiff as diff } from "deep-object-diff";
 
 type DebuggerPacket = {
@@ -39,7 +40,18 @@ function nestedIncludes(
   return mappedEntries.some(([_, v]) => v === true);
 }
 
-function makeLogEntry(packet: DebuggerPacket) {
+function getLogLines(packet: DebuggerPacket): string[] {
+  const date = new Date(packet._t).toLocaleString();
+  const packetType = packet._d?.type;
+  const maybeActionType = packetType == null ? "" : `${packetType} => `;
+  const content = JSON.stringify(packet._d, null, 2);
+  const str = `[${date}]: ${maybeActionType}\n${content}`;
+  const [firstLine, ...otherLines] = str.split("\n");
+
+  return [firstLine, ...otherLines];
+}
+
+/* function makeLogEntry(packet: DebuggerPacket) {
   const date = new Date(packet._t).toLocaleString();
   const packetType = packet._d?.type;
   const maybeActionType = packetType == null ? "" : `${packetType} => `;
@@ -65,7 +77,7 @@ function makeLogEntry(packet: DebuggerPacket) {
   node.appendChild(detailsNode);
 
   return node;
-}
+} */
 
 const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
   if (allFolded) {
@@ -94,7 +106,7 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
   };
 
   const wsReadyStateEl = document.querySelector("#ws-ready-state");
-  const actionsLog = document.querySelector("#actions-dispatch");
+  const actionsLog = document.querySelector("#actions-dispatch-wrapper");
   const actionsInputFilter = document.querySelector("#input-filter-actions");
   const actionsDispatchCounter = document.querySelector(
     "#dispatched-actions-counter",
@@ -103,7 +115,7 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     "#btn-action-toggle-folding",
   );
 
-  const stateLog = document.querySelector("#state-updates");
+  const stateLog = document.querySelector("#state-updates-wrapper");
   const stateInputFilter = document.querySelector("#input-filter-state");
   const stateUpdatesCounter = document.querySelector("#state-updates-counter");
   const stateDiffModeStatus = document.querySelector("#state-diff-mode");
@@ -234,7 +246,8 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
       return; // skip
     }
 
-    let logEntry;
+    //let logEntry;
+    let logLines: string[] = [];
     let nodeToUpdate;
 
     if (
@@ -248,16 +261,35 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
         _d: diffResult as Record<string, unknown>,
       };
 
-      logEntry = makeLogEntry(diffPacket);
+      //logEntry = makeLogEntry(diffPacket);
+      logLines = getLogLines(diffPacket);
       nodeToUpdate = stateLog;
     } else {
-      logEntry = makeLogEntry(packet);
+      //logEntry = makeLogEntry(packet);
+      logLines = getLogLines(packet);
       nodeToUpdate = packet._k === "action" ? actionsLog : stateLog;
     }
 
     if (nodeToUpdate != null) {
-      nodeToUpdate.appendChild(logEntry);
-      nodeToUpdate.scrollTop = nodeToUpdate.scrollHeight;
+      const jsonTreeViewNode = document.createElement("div");
+      renderJSONTreeView(packet._d, jsonTreeViewNode, {
+        expanded: false,
+      });
+
+      const [firstLine] = logLines;
+      const firstLineNode = document.createTextNode(firstLine);
+
+      const wrapperNode = document.createElement("div");
+
+      wrapperNode.appendChild(firstLineNode);
+      wrapperNode.appendChild(jsonTreeViewNode);
+
+      nodeToUpdate.appendChild(wrapperNode);
+
+      if (nodeToUpdate.parentElement != null) {
+        nodeToUpdate.parentElement.scrollTop =
+          nodeToUpdate.parentElement.scrollHeight;
+      }
     }
 
     if (actionsDispatchCounter != null) {

@@ -3,11 +3,12 @@
 [![NPM](https://img.shields.io/npm/v/react-global-state-hooks-debugger?color=red)](https://www.npmjs.com/package/react-global-state-hooks-debugger)
 [![MIT License](https://img.shields.io/github/license/EthicDevs/react-global-state-hooks-debugger.svg?color=blue)](https://github.com/EthicDevs/react-global-state-hooks-debugger/blob/master/LICENSE)
 [![Travis CI Build](https://img.shields.io/travis/com/EthicDevs/react-global-state-hooks-debugger.svg)](https://travis-ci.com/EthicDevs/react-global-state-hooks-debugger)
-[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=EthicDevs/react-global-state-hooks-debugger)](https://dependabot.com)
 [![Average issue resolution time](https://isitmaintained.com/badge/resolution/EthicDevs/react-global-state-hooks-debugger.svg)](https://isitmaintained.com/project/EthicDevs/react-global-state-hooks-debugger)
 [![Number of open issues](https://isitmaintained.com/badge/open/EthicDevs/react-global-state-hooks-debugger.svg)](https://isitmaintained.com/project/EthicDevs/react-global-state-hooks-debugger)
 
 A small WebSocket based debugger for use with the [react-global-state-hooks](https://github.com/EthicDevs/react-global-state-hooks) library.
+
+![demo screenshot](./assets/demo-screen-01.jpg)
 
 ## Installation
 

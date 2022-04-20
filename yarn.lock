@@ -403,6 +403,10 @@
   version "0.5.7"
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
 
+"@ethicdevs/json-tree-view@1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@ethicdevs/json-tree-view/-/json-tree-view-1.1.2.tgz#e74e849bf76e7e20cfd329e395187211ddde0a4a"
+
 "@ethicdevs/react-global-state-hooks@file:../react-global-state-hooks":
   version "0.7.0"
 

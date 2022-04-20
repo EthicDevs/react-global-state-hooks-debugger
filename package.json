@@ -43,6 +43,7 @@
     "ci": "run-s test build"
   },
   "dependencies": {
+    "@ethicdevs/json-tree-view": "1.1.2",
     "deep-object-diff": "^1.1.7",
     "jsonpath-plus": "^6.0.1",
     "ts-loader": "^9.2.8",

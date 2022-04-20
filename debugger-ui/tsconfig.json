@@ -9,7 +9,7 @@
     "outDir": "../public",
     "rootDir": "./",
     "paths": {
-      "*": ["./node_modules/@types/*"]
+      "*": ["../node_modules/@types/*", "../types"]
     },
 
     // Strict Type-Checking Options
