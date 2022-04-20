@@ -6,6 +6,13 @@ type DebuggerPacket = {
   _d: Record<string, unknown>;
 };
 
+export enum WS_READY_STATE {
+  Connecting = 0,
+  Open = 1,
+  Closing = 2,
+  Closed = 3,
+}
+
 function nestedIncludes(
   obj: Record<string, unknown>,
   toMatch: string,
@@ -68,9 +75,9 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
   }
 };
 
-(function iife() {
-  console.log("Hey from the debugger UI!");
-  const ws = new WebSocket("ws://localhost:8080");
+(function iife(wsUri = "ws://localhost:8080") {
+  console.log(`[rgsh-debugger/ui] Hey, will connect to ws on: ${wsUri}`);
+  let ws = new WebSocket(wsUri);
 
   let stats = {
     dispatchedActions: 0,
@@ -147,9 +154,34 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     }
   };
 
+  function recreateWebSocket(log?: (message: string) => void) {
+    if (ws.readyState === WS_READY_STATE.Open) {
+      return undefined;
+    }
+
+    if (ws.readyState === WS_READY_STATE.Closed) {
+      log?.(
+        "[rgsh-debugger/ui] Lost connection to debugger. Sleeping 3s before reconnecting...",
+      );
+    }
+    // Give it a grace period of 3s before reconnecting
+    setTimeout(() => {
+      if (ws.readyState !== WS_READY_STATE.Open) {
+        ws = new WebSocket(wsUri);
+      }
+    }, 1000 * 3);
+
+    return undefined;
+  }
+
   ws.onerror = function error(ev) {
     if (wsReadyStateEl != null) {
       wsReadyStateEl.textContent = "errored, error: " + (ev as any).message;
+      recreateWebSocket((message) => {
+        wsReadyStateEl.textContent = message;
+      });
+    } else {
+      recreateWebSocket();
     }
   };
 
@@ -158,6 +190,11 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
 
     if (wsReadyStateEl != null) {
       wsReadyStateEl.textContent = `connection closed. ${tags.join(" ")}`;
+      recreateWebSocket((message) => {
+        wsReadyStateEl.textContent = message;
+      });
+    } else {
+      recreateWebSocket();
     }
   };
 
