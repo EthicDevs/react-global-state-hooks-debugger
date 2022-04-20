@@ -9,6 +9,7 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
   const sendRetryQueue: string[] = [];
 
   let ws = new WebSocket(wsUri);
+  let forceStopped = false;
 
   ws.onopen = function open() {
     ws.send(ProtocolPacketKind.Attach);
@@ -18,6 +19,10 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
   };
 
   function recreateWebSocket() {
+    if (forceStopped) {
+      return undefined;
+    }
+
     console.warn(
       "[rgsh-debugger/logger] Lost connection to debugger. Sleeping 3s before reconnecting...",
     );
@@ -25,6 +30,8 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
     setTimeout(() => {
       ws = new WebSocket(wsUri);
     }, 1000 * 3);
+
+    return undefined;
   }
 
   ws.onclose = recreateWebSocket;
@@ -44,6 +51,7 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
       if (ws.readyState <= WS_READY_STATE.Open) {
         ws.send(ProtocolPacketKind.Dettach);
         ws.close(0, reason);
+        forceStopped = true;
       }
     },
   };
