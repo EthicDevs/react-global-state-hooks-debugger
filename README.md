@@ -35,10 +35,15 @@ Add a script in your project to launch the debugger server:
 then in the `App` component where you provide the `GlobalStateContext` add something like this:
 
 ```ts
-+ import { getDebuggerLogger } from "@ethicdevs/react-global-state-hooks-debugger";
++ import { makeGetDebuggerLogger } from "@ethicdevs/react-global-state-hooks-debugger";
 
-+ const getLogger =
-+   process.env.RGSH_DEBUG === "1" ? getDebuggerLogger : getGlobalStateLogger;
++ const getDebuggerLogger = makeGetDebuggerLogger({
++   wsUri: 'ws://localhost:8080', // default: ws://10.0.2.2 (so it works with react-native on remote device by default)
++ });
+
++ const getLogger = process.env.NODE_ENV === 'development'
++   ? getDebuggerLogger
++   : getCustomLogger; // | undefined to use built-in getConsoleLogger
 
 const AppWithProviders = () => {
 
@@ -46,7 +51,7 @@ const AppWithProviders = () => {
     <>
       <GlobalStateProvider
         initialState={initialState}
-+        getLogger={getLogger}
++       getLogger={getLogger}
         rootReducer={
           rootReducer as unknown as Reducer<FluxBaseState, FluxStandardAction>
         }

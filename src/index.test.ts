@@ -1,7 +1,7 @@
-import lib from './index'
+import * as lib from './index'
 
-describe('typescript-library-starter', () => {
-  test('testing works', () => {
-    expect(lib).toBe('Hello, World !')
+describe('@ethicdevs/react-global-state-hooks-debugger', () => {
+  test('exports makeGetDebuggerLogger', () => {
+    expect(lib.makeGetDebuggerLogger).toBeDefined();
   })
 })
