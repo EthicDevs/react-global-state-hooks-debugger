@@ -19,16 +19,20 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
   };
 
   function recreateWebSocket() {
-    if (forceStopped) {
+    if (forceStopped || ws.readyState === WS_READY_STATE.Open) {
       return undefined;
     }
 
-    console.warn(
-      "[rgsh-debugger/logger] Lost connection to debugger. Sleeping 3s before reconnecting...",
-    );
+    if (ws.readyState === WS_READY_STATE.Closed) {
+      console.warn(
+        "[rgsh-debugger/logger] Lost connection to debugger. Sleeping 3s before reconnecting...",
+      );
+    }
     // Give it a grace period of 3s before reconnecting
     setTimeout(() => {
-      ws = new WebSocket(wsUri);
+      if (ws.readyState !== WS_READY_STATE.Open) {
+        ws = new WebSocket(wsUri);
+      }
     }, 1000 * 3);
 
     return undefined;
