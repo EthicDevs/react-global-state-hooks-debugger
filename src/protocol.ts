@@ -1,4 +1,3 @@
-
 export type ProtocolPacket = [string, number, string];
 
 export enum ProtocolPacketKind {
