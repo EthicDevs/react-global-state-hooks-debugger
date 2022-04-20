@@ -1,6 +1,6 @@
 {
   "name": "@ethicdevs/react-global-state-hooks-debugger",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A small websocket based debugger for use with the react-global-state-hooks library",
   "main": "dist/index.js",
   "module": "dist/index.js",
