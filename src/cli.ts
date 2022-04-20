@@ -18,7 +18,7 @@ type SocketClient = WebSocket & {
 
 export async function cli() {
   const wss = new WebSocketServer({ port: 8080 }, () => {
-    console.log("[RGSH-Debugger] WSS server listening on :8080");
+    console.log("[RGSH-Debugger] WSS server listening on ws://localhost:8080");
   });
 
   const clients: Record<string, SocketClient> = {};
@@ -106,9 +106,6 @@ export async function cli() {
   });
 
   server.listen(7979, '0.0.0.0', undefined, () => {
-    // TODO: Serve static html page
-    // TODO: add websocket client on it
-    // TODO: broadcast messages from logger to ui
-    console.log("[RGSH-Debugger] HTTP server listening on :7979");
+    console.log("[RGSH-Debugger] HTTP server listening on http://localhost:7979");
   })
 }
