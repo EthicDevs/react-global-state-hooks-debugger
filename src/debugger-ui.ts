@@ -1,29 +1,59 @@
-declare var document : any;
-declare var alert : (message: string) => void;
+declare var document: any;
+declare var alert: (message: string) => void;
+declare var deepObjectDiff: (
+  leftObj: Record<string, unknown>,
+  rightObj: Record<string, unknown>,
+) => Record<string, unknown>;
 
 type DebuggerPacket = {
   _k: string;
   _t: number;
-  _d: Record<string, unknown>
+  _d: Record<string, unknown>;
 };
+
+function nestedIncludes(
+  obj: Record<string, unknown>,
+  toMatch: string,
+): boolean {
+  const entries = Object.entries(obj);
+  const mappedEntries = entries.map(([k, v]): [string, boolean] => {
+    if (typeof v === "object") {
+      return [k, nestedIncludes(v as any, toMatch)];
+    } else if (
+      typeof v === "function" ||
+      typeof v === "undefined" ||
+      typeof v === "symbol" ||
+      typeof v === "bigint" ||
+      typeof v === "number"
+    ) {
+      return [k, false];
+    } else if (typeof v === "string") {
+      return [k, v.includes(toMatch)];
+    } else {
+      return [k, false];
+    }
+  });
+
+  return mappedEntries.some(([_, v]) => v === true);
+}
 
 function makeLogEntry(packet: DebuggerPacket) {
   const date = new Date(packet._t).toLocaleString();
   const packetType = packet._d?.type;
-  const maybeActionType = packetType == null ? '' : `${packetType} => `;
+  const maybeActionType = packetType == null ? "" : `${packetType} => `;
   const content = JSON.stringify(packet._d, null, 2);
   const str = `[${date}]: ${maybeActionType}${content}`;
-  const [firstLine, ...otherLines] = str.split('\n');
+  const [firstLine, ...otherLines] = str.split("\n");
 
-  const node = document.createElement('li');
-  const detailsNode = document.createElement('details');
-  const summaryNode = document.createElement('summary');
-  const preNode = document.createElement('pre');
+  const node = document.createElement("li");
+  const detailsNode = document.createElement("details");
+  const summaryNode = document.createElement("summary");
+  const preNode = document.createElement("pre");
   const summaryTextNode = document.createTextNode(firstLine);
-  const textNode = document.createTextNode(otherLines.join('\n'));
+  const textNode = document.createTextNode(otherLines.join("\n"));
 
-  detailsNode.setAttribute('open', true);
-  detailsNode.classList.add('log');
+  detailsNode.setAttribute("open", true);
+  detailsNode.classList.add("log");
   detailsNode.classList.add(`log-${packet._k}`);
 
   summaryNode.appendChild(summaryTextNode);
@@ -41,75 +71,155 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
   } else {
     node.removeAttribute("open");
   }
-}
+};
 
 (function iife() {
-  console.log('Hey from the debugger UI!');
-  const ws = new WebSocket('ws://localhost:8080');
+  console.log("Hey from the debugger UI!");
+  const ws = new WebSocket("ws://localhost:8080");
 
   let stats = {
     dispatchedActions: 0,
     stateUpdates: 0,
-  }
+  };
 
   let state = {
     actionsAllFolded: false,
     stateAllFolded: false,
+    stateDiffMode: false,
+    lastStateData: null as null | Record<string, unknown>,
+    actionsFilterByValue: "",
+    stateFilterByValue: "",
   };
 
-  const wsReadyStateEl = document.querySelector('#ws-ready-state');
-  const actionsLog = document.querySelector('#actions-dispatch');
-  const actionsDispatchCounter = document.querySelector('#dispatched-actions-counter');
-  const actionsToggleFoldingButton = document.querySelector('#btn-action-toggle-folding');
+  const wsReadyStateEl = document.querySelector("#ws-ready-state");
+  const actionsLog = document.querySelector("#actions-dispatch");
+  const actionsInputFilter = document.querySelector("#input-filter-actions");
+  const actionsDispatchCounter = document.querySelector(
+    "#dispatched-actions-counter",
+  );
+  const actionsToggleFoldingButton = document.querySelector(
+    "#btn-action-toggle-folding",
+  );
 
-  const stateLog = document.querySelector('#state-updates');
-  const stateUpdatesCounter = document.querySelector('#state-updates-counter');
-  const stateToggleFoldingButton = document.querySelector('#btn-state-toggle-folding');
+  const stateLog = document.querySelector("#state-updates");
+  const stateInputFilter = document.querySelector("#input-filter-state");
+  const stateUpdatesCounter = document.querySelector("#state-updates-counter");
+  const stateDiffModeStatus = document.querySelector("#state-diff-mode");
+  const stateToggleFoldingButton = document.querySelector(
+    "#btn-state-toggle-folding",
+  );
+  const stateToggleDiffModeButton = document.querySelector(
+    "#btn-state-toggle-diff-mode",
+  );
 
-  actionsToggleFoldingButton.addEventListener('click', () => {
-    const allActionNodes = document.querySelectorAll('.log-action');
+  actionsInputFilter.addEventListener("change", function (ev: any) {
+    if (ev.target.value != null) {
+      state.actionsFilterByValue = ev.target.value;
+      console.log("filter::actionsFilterByValue:", state.actionsFilterByValue);
+    }
+  });
+
+  stateInputFilter.addEventListener("change", function (ev: any) {
+    if (ev.target.value != null) {
+      state.stateFilterByValue = ev.target.value;
+      console.log("filter::stateFilterByValue:", state.stateFilterByValue);
+    }
+  });
+
+  actionsToggleFoldingButton.addEventListener("click", () => {
+    const allActionNodes = document.querySelectorAll(".log-action");
     allActionNodes.forEach(makeNodeToggleFolding(state.actionsAllFolded));
     state.actionsAllFolded = !state.actionsAllFolded;
   });
 
-  stateToggleFoldingButton.addEventListener('click', () => {
-    const allStateNodes = document.querySelectorAll('.log-state');
+  stateToggleFoldingButton.addEventListener("click", () => {
+    const allStateNodes = document.querySelectorAll(".log-state");
     allStateNodes.forEach(makeNodeToggleFolding(state.stateAllFolded));
     state.stateAllFolded = !state.stateAllFolded;
   });
 
+  stateToggleDiffModeButton.addEventListener("click", () => {
+    state.stateDiffMode = !state.stateDiffMode;
+    stateDiffModeStatus.textContent = state.stateDiffMode ? "On" : "Off";
+  });
+
   ws.onopen = function open() {
-    ws.send('tail');
-    wsReadyStateEl.textContent = 'connected';
+    ws.send("tail");
+    wsReadyStateEl.textContent = "connected";
   };
 
   ws.onerror = function error(ev) {
-    wsReadyStateEl.textContent = 'errored, error: ' + ev.message;
+    wsReadyStateEl.textContent = "errored, error: " + ev.message;
   };
 
-  ws.onclose = function close({code, reason, message}) {
+  ws.onclose = function close({ code, reason, message }) {
     const tags = [
-      `code=${code || 'none'}`,
-      `reason=${reason || 'none'}`,
-      `message=${message || 'none'}`,
+      `code=${code || "none"}`,
+      `reason=${reason || "none"}`,
+      `message=${message || "none"}`,
     ];
 
-    wsReadyStateEl.textContent = `connection closed. ${tags.join(' ')}`;
-  }
+    wsReadyStateEl.textContent = `connection closed. ${tags.join(" ")}`;
+  };
 
   ws.onmessage = function message(ev) {
     const data = ev.data.toString();
     const packet = JSON.parse(data.toString()) as DebuggerPacket;
 
-    const logEntry = makeLogEntry(packet);
-
-    let nodeToUpdate;
-    if (packet._k === 'action') {
-      nodeToUpdate = actionsLog;
+    if (packet._k === "action") {
       stats.dispatchedActions += 1;
-    } else if (packet._k === 'state') {
-      nodeToUpdate = stateLog;
+    } else if (packet._k === "state") {
       stats.stateUpdates += 1;
+    }
+
+    if (
+      packet._k === "state" &&
+      state.stateFilterByValue != null &&
+      state.stateFilterByValue.trim() !== "" &&
+      nestedIncludes(packet._d, state.stateFilterByValue) === false
+    ) {
+      console.log(
+        "includesStateFilter:",
+        nestedIncludes(packet._d, state.stateFilterByValue),
+      );
+      return; // skip
+    }
+
+    if (
+      packet._k === "action" &&
+      state.actionsFilterByValue != null &&
+      state.actionsFilterByValue.trim() !== "" &&
+      nestedIncludes(packet._d, state.actionsFilterByValue) === false
+    ) {
+      console.log(
+        "includesActionsFilter:",
+        nestedIncludes(packet._d, state.actionsFilterByValue),
+      );
+      return; // skip
+    }
+
+    let logEntry;
+    let nodeToUpdate;
+
+    if (
+      packet._k === "state" &&
+      state.stateDiffMode === true &&
+      state.lastStateData != null
+    ) {
+      const diff = deepObjectDiff(packet._d, state.lastStateData);
+
+      console.log("diff", diff);
+
+      const diffPacket = {
+        ...packet,
+        _d: diff,
+      };
+
+      logEntry = makeLogEntry(diffPacket);
+      nodeToUpdate = stateLog;
+    } else {
+      nodeToUpdate = packet._k === "action" ? actionsLog : stateLog;
+      logEntry = makeLogEntry(packet);
     }
 
     if (nodeToUpdate != null) {
@@ -119,5 +229,7 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
 
     actionsDispatchCounter.textContent = `(${stats.dispatchedActions} dispatches)`;
     stateUpdatesCounter.textContent = `(${stats.stateUpdates} updates)`;
+
+    state.lastStateData = packet._d;
   };
 })();

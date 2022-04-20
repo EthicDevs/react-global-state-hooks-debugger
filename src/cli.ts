@@ -1,20 +1,25 @@
-import { createServer } from 'http';
-import { promisify } from 'util';
-import { readFile } from 'fs'
-import { resolve, join } from 'path';
+import { createServer } from "http";
+import { promisify } from "util";
+import { readFile } from "fs";
+import { resolve, join } from "path";
 
 import { WebSocketServer } from "ws";
-import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from "uuid";
 
 const readFileAsync = promisify(readFile);
 
-const INDEX_FILE_PATH = resolve(join(__dirname, '..', 'public', 'index.html'));
-const DEBUGGER_UI_SCRIPT_PATH = resolve(join(__dirname, '..', 'dist', 'debugger-ui.js'));
+const INDEX_FILE_PATH = resolve(join(__dirname, "..", "public", "index.html"));
+const DEEP_OBJ_DIFF_SCRIPT_PATH = resolve(
+  join(__dirname, "..", "public", "deep-object-diff.js"),
+);
+const DEBUGGER_UI_SCRIPT_PATH = resolve(
+  join(__dirname, "..", "dist", "debugger-ui.js"),
+);
 
 type SocketClient = WebSocket & {
   uid?: string;
-  kind?: 'app' | 'debugger-ui';
-}
+  kind?: "app" | "debugger-ui";
+};
 
 export async function cli() {
   const wss = new WebSocketServer({ port: 8080 }, () => {
@@ -32,41 +37,47 @@ export async function cli() {
 
     console.log(`[${uid}] client connected`);
 
-    ws.on('close', function close() {
+    ws.on("close", function close() {
       clients[uid] = null as never; // so it get's garbage collected
       delete clients[uid];
 
       console.log(`[${uid}] client disconnected`);
-    })
+    });
 
     ws.on("message", function message(data) {
       try {
-        if (data.toString() === 'attach') {
-          client.kind = 'app';
+        if (data.toString() === "attach") {
+          client.kind = "app";
           console.log(`[${uid}] client kind set to: app`);
-        } else if (data.toString() === 'tail') {
-          client.kind = 'debugger-ui';
+        } else if (data.toString() === "tail") {
+          client.kind = "debugger-ui";
           console.log(`[${uid}] client kind set to: debugger-ui`);
         } else {
           console.log(`[${uid}] client sent us logs, processing...`);
 
           // Broadcast logs to debugger-ui's
-          const attachedDebuggers = Object.values(clients).filter((sockClient) => {
-            return !!(
-              sockClient.kind === 'debugger-ui' &&
-              sockClient.uid !== client.uid
-            )
-          });
+          const attachedDebuggers = Object.values(clients).filter(
+            (sockClient) => {
+              return !!(
+                sockClient.kind === "debugger-ui" &&
+                sockClient.uid !== client.uid
+              );
+            },
+          );
 
-          console.log(`[${uid}] will emit logs to ${attachedDebuggers.length} attached debuggers...`);
+          console.log(
+            `[${uid}] will emit logs to ${attachedDebuggers.length} attached debuggers...`,
+          );
 
           attachedDebuggers.forEach((sockClient) => {
-            if (sockClient && 'send' in sockClient) {
+            if (sockClient && "send" in sockClient) {
               sockClient.send(data.toString());
             }
           });
 
-          console.log(`[${uid}] emited logs to ${attachedDebuggers.length} attached debuggers`);
+          console.log(
+            `[${uid}] emited logs to ${attachedDebuggers.length} attached debuggers`,
+          );
         }
       } catch (err) {
         console.warn(`[${uid}] could not send message:`, err);
@@ -79,33 +90,44 @@ export async function cli() {
     const method = req.method;
     const path = req.url;
 
-    if (method === 'GET') {
+    if (method === "GET") {
       switch (path) {
-        case '/': {
+        case "/": {
           const indexFile = await readFileAsync(INDEX_FILE_PATH);
-          res.writeHead(200, 'OK', { 'Content-Type': 'text/html' });
+          res.writeHead(200, "OK", { "Content-Type": "text/html" });
           res.write(indexFile);
           res.end();
           break;
         }
-        case '/rgsh-debugger.js': {
+        case "/deep-object-diff.js": {
+          const debuggerUiScript = await readFileAsync(
+            DEEP_OBJ_DIFF_SCRIPT_PATH,
+          );
+          res.writeHead(200, "OK", { "Content-Type": "text/javascript" });
+          res.write(debuggerUiScript);
+          res.end();
+          break;
+        }
+        case "/rgsh-debugger.js": {
           const debuggerUiScript = await readFileAsync(DEBUGGER_UI_SCRIPT_PATH);
-          res.writeHead(200, 'OK', { 'Content-Type': 'text/javascript' });
+          res.writeHead(200, "OK", { "Content-Type": "text/javascript" });
           res.write(debuggerUiScript);
           res.end();
           break;
         }
         default: {
-          res.end('Not found.');
+          res.end("Not found.");
           break;
         }
       }
     } else {
-      res.end('');
+      res.end("");
     }
   });
 
-  server.listen(7979, '0.0.0.0', undefined, () => {
-    console.log("[RGSH-Debugger] HTTP server listening on http://localhost:7979");
-  })
+  server.listen(7979, "0.0.0.0", undefined, () => {
+    console.log(
+      "[RGSH-Debugger] HTTP server listening on http://localhost:7979",
+    );
+  });
 }
