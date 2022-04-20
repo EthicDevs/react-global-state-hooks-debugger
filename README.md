@@ -20,17 +20,11 @@ $ npm i @ethicdevs/react-global-state-hooks-debugger
 
 ## Usage
 
-Add a script in your project to launch the debugger server:
+Launch the debugger in a new terminal tab, reload your application (react-native reload, page refresh, for example), open the debugger browser UI, enjoy!
 
-```json
-{
-  "scripts": {
-    // Run the app with logger configured to send state changes, dispatched actions, etc
-    "start:rgsh": "RGSH_DEBUG=1 run-s start:dev",
-    // Local debug server that receives the logs, and display them
-    "start:rgsh:server": "rgsh-debugger -r ./state -p 3123"
-  }
-}
+```bash
+$ yarn rgsh-debugger
+# ... => http://localhost:7979
 ```
 
 then in the `App` component where you provide the `GlobalStateContext` add something like this:
@@ -68,8 +62,6 @@ const AppWithProviders = () => {
 };
 ```
 
-## Configuration
-
 ## License
 
-[MIT](https://github.com/EthicDevs/react-global-state-hooks-debugger/blob/master/LICENSE) - Made with ❤️ by [François Best](https://francoisbest.com) - [Donations welcome](https://paypal.me/francoisbest?locale.x=fr_FR) 🙏
+[MIT](https://github.com/EthicDevs/react-global-state-hooks-debugger/blob/master/LICENSE)
