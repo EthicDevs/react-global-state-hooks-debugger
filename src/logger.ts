@@ -1,4 +1,9 @@
-import { FluxBaseState, FluxStandardAction, Logger, LoggerType } from "@ethicdevs/react-global-state-hooks";
+import {
+  FluxBaseState,
+  FluxStandardAction,
+  Logger,
+  LoggerType,
+} from "@ethicdevs/react-global-state-hooks";
 
 import { WS_READY_STATE } from "./types";
 import { makeWsClient } from "./ws-client";
@@ -12,31 +17,33 @@ function logStateType(state: FluxBaseState): [string, number, string] {
 }
 
 export function makeGetDebuggerLogger(options?: { wsUri?: string }): [
-  ((loggerType: LoggerType) => Logger<FluxBaseState>), // getLogger
-  (() => void) // cleanupFn
+  (loggerType: LoggerType) => Logger<FluxBaseState>, // getLogger
+  () => void, // cleanupFn
 ] {
   let wsClient = makeWsClient(options?.wsUri);
 
-  function getDebuggerLogger(
-    loggerType: LoggerType,
-  ): Logger<FluxBaseState> {
+  function getDebuggerLogger(loggerType: LoggerType): Logger<FluxBaseState> {
     switch (loggerType) {
       case LoggerType.Dispatch: {
         return {
           logAction(action) {
-            wsClient.send(logActionType(action));
+            if (wsClient != null) {
+              wsClient.send(logActionType(action));
+            }
           },
         };
       }
       case LoggerType.State: {
         return {
           logState(state) {
-            wsClient.send(logStateType(state));
+            if (wsClient != null) {
+              wsClient.send(logStateType(state));
+            }
           },
         };
       }
     }
-  };
+  }
 
   function cleanupDebuggerLogger() {
     if (wsClient != null && wsClient.readyState <= WS_READY_STATE.Open) {

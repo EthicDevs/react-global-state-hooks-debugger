@@ -1,4 +1,8 @@
-import { ProtocolPacket, ProtocolPacketKind, serializePacket } from "./protocol";
+import {
+  ProtocolPacket,
+  ProtocolPacketKind,
+  serializePacket,
+} from "./protocol";
 import { WsClient, WS_READY_STATE } from "./types";
 
 export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
@@ -12,6 +16,19 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
       sendRetryQueue.forEach((packetStr) => ws.send(packetStr));
     }
   };
+
+  function recreateWebSocket() {
+    console.warn(
+      "[rgsh-debugger/logger] Lost connection to debugger. Sleeping 3s before reconnecting...",
+    );
+    // Give it a grace period of 3s before reconnecting
+    setTimeout(() => {
+      ws = new WebSocket(wsUri);
+    }, 1000 * 3);
+  }
+
+  ws.onclose = recreateWebSocket;
+  ws.onerror = recreateWebSocket;
 
   return {
     readyState: ws.readyState,
@@ -28,6 +45,6 @@ export function makeWsClient(wsUri = "ws://10.0.2.2:8080"): WsClient {
         ws.send(ProtocolPacketKind.Dettach);
         ws.close(0, reason);
       }
-    }
+    },
   };
 }

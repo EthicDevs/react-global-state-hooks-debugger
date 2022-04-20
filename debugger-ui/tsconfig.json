@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "target": "es2018",
-    "module": "commonjs",
-    "lib": ["ES2020"],
+    "target": "es5",
+    "module": "es2015",
+    "moduleResolution": "node",
+    "lib": ["dom", "es5", "es2015.promise"],
     "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "outDir": "../public",
+    "rootDir": "./",
     "paths": {
       "*": ["./node_modules/@types/*"]
     },
@@ -34,8 +35,8 @@
     "emitDecoratorMetadata": true
   },
   "exclude": [
-    "./debugger-ui",
-    "./src/**/*.test.ts",
+    "./src",
+    "./debugger-ui/**/*.test.ts",
     "./dist",
     "./node_modules",
     "node_modules/**"

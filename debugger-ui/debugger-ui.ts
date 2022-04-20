@@ -1,9 +1,4 @@
-declare var document: any;
-declare var alert: (message: string) => void;
-declare var deepObjectDiff: (
-  leftObj: Record<string, unknown>,
-  rightObj: Record<string, unknown>,
-) => Record<string, unknown>;
+import { updatedDiff as diff } from "deep-object-diff";
 
 type DebuggerPacket = {
   _k: string;
@@ -52,7 +47,7 @@ function makeLogEntry(packet: DebuggerPacket) {
   const summaryTextNode = document.createTextNode(firstLine);
   const textNode = document.createTextNode(otherLines.join("\n"));
 
-  detailsNode.setAttribute("open", true);
+  detailsNode.setAttribute("open", "true");
   detailsNode.classList.add("log");
   detailsNode.classList.add(`log-${packet._k}`);
 
@@ -112,54 +107,58 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     "#btn-state-toggle-diff-mode",
   );
 
-  actionsInputFilter.addEventListener("change", function (ev: any) {
+  actionsInputFilter?.addEventListener("change", function (ev: any) {
     if (ev.target.value != null) {
       state.actionsFilterByValue = ev.target.value;
       console.log("filter::actionsFilterByValue:", state.actionsFilterByValue);
     }
   });
 
-  stateInputFilter.addEventListener("change", function (ev: any) {
+  stateInputFilter?.addEventListener("change", function (ev: any) {
     if (ev.target.value != null) {
       state.stateFilterByValue = ev.target.value;
       console.log("filter::stateFilterByValue:", state.stateFilterByValue);
     }
   });
 
-  actionsToggleFoldingButton.addEventListener("click", () => {
+  actionsToggleFoldingButton?.addEventListener("click", () => {
     const allActionNodes = document.querySelectorAll(".log-action");
     allActionNodes.forEach(makeNodeToggleFolding(state.actionsAllFolded));
     state.actionsAllFolded = !state.actionsAllFolded;
   });
 
-  stateToggleFoldingButton.addEventListener("click", () => {
+  stateToggleFoldingButton?.addEventListener("click", () => {
     const allStateNodes = document.querySelectorAll(".log-state");
     allStateNodes.forEach(makeNodeToggleFolding(state.stateAllFolded));
     state.stateAllFolded = !state.stateAllFolded;
   });
 
-  stateToggleDiffModeButton.addEventListener("click", () => {
+  stateToggleDiffModeButton?.addEventListener("click", () => {
     state.stateDiffMode = !state.stateDiffMode;
-    stateDiffModeStatus.textContent = state.stateDiffMode ? "On" : "Off";
+    if (stateDiffModeStatus != null) {
+      stateDiffModeStatus.textContent = state.stateDiffMode ? "On" : "Off";
+    }
   });
 
   ws.onopen = function open() {
     ws.send("tail");
-    wsReadyStateEl.textContent = "connected";
+    if (wsReadyStateEl != null) {
+      wsReadyStateEl.textContent = "connected";
+    }
   };
 
   ws.onerror = function error(ev) {
-    wsReadyStateEl.textContent = "errored, error: " + ev.message;
+    if (wsReadyStateEl != null) {
+      wsReadyStateEl.textContent = "errored, error: " + (ev as any).message;
+    }
   };
 
-  ws.onclose = function close({ code, reason, message }) {
-    const tags = [
-      `code=${code || "none"}`,
-      `reason=${reason || "none"}`,
-      `message=${message || "none"}`,
-    ];
+  ws.onclose = function close({ code, reason }) {
+    const tags = [`code=${code || "none"}`, `reason=${reason || "none"}`];
 
-    wsReadyStateEl.textContent = `connection closed. ${tags.join(" ")}`;
+    if (wsReadyStateEl != null) {
+      wsReadyStateEl.textContent = `connection closed. ${tags.join(" ")}`;
+    }
   };
 
   ws.onmessage = function message(ev) {
@@ -206,20 +205,17 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
       state.stateDiffMode === true &&
       state.lastStateData != null
     ) {
-      const diff = deepObjectDiff(packet._d, state.lastStateData);
-
-      console.log("diff", diff);
-
+      const diffResult = diff(state.lastStateData, packet._d);
       const diffPacket = {
         ...packet,
-        _d: diff,
+        _d: diffResult as Record<string, unknown>,
       };
 
       logEntry = makeLogEntry(diffPacket);
       nodeToUpdate = stateLog;
     } else {
-      nodeToUpdate = packet._k === "action" ? actionsLog : stateLog;
       logEntry = makeLogEntry(packet);
+      nodeToUpdate = packet._k === "action" ? actionsLog : stateLog;
     }
 
     if (nodeToUpdate != null) {
@@ -227,8 +223,13 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
       nodeToUpdate.scrollTop = nodeToUpdate.scrollHeight;
     }
 
-    actionsDispatchCounter.textContent = `(${stats.dispatchedActions} dispatches)`;
-    stateUpdatesCounter.textContent = `(${stats.stateUpdates} updates)`;
+    if (actionsDispatchCounter != null) {
+      actionsDispatchCounter.textContent = `(${stats.dispatchedActions} dispatches)`;
+    }
+
+    if (stateUpdatesCounter != null) {
+      stateUpdatesCounter.textContent = `(${stats.stateUpdates} updates)`;
+    }
 
     state.lastStateData = packet._d;
   };

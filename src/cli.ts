@@ -9,11 +9,8 @@ import { v4 as uuid } from "uuid";
 const readFileAsync = promisify(readFile);
 
 const INDEX_FILE_PATH = resolve(join(__dirname, "..", "public", "index.html"));
-const DEEP_OBJ_DIFF_SCRIPT_PATH = resolve(
-  join(__dirname, "..", "public", "deep-object-diff.js"),
-);
 const DEBUGGER_UI_SCRIPT_PATH = resolve(
-  join(__dirname, "..", "dist", "debugger-ui.js"),
+  join(__dirname, "..", "public", "debugger-ui.js"),
 );
 
 type SocketClient = WebSocket & {
@@ -95,22 +92,29 @@ export async function cli() {
         case "/": {
           const indexFile = await readFileAsync(INDEX_FILE_PATH);
           res.writeHead(200, "OK", { "Content-Type": "text/html" });
+          res.write(`<!--
+ | @author EthicDevs <ethicdevs.com>
+ | @name React Global State Hooks Debugger UI
+ | @license MIT
+ | @repository https://github.com/ethicdevs/react-global-state-hook-debugger
+ | @see https://github.com/ethicdevs/react-global-state-hook
+ -->
+`);
           res.write(indexFile);
           res.end();
           break;
         }
-        case "/deep-object-diff.js": {
-          const debuggerUiScript = await readFileAsync(
-            DEEP_OBJ_DIFF_SCRIPT_PATH,
-          );
-          res.writeHead(200, "OK", { "Content-Type": "text/javascript" });
-          res.write(debuggerUiScript);
-          res.end();
-          break;
-        }
-        case "/rgsh-debugger.js": {
+        case "/rgsh-debugger-ui.js": {
           const debuggerUiScript = await readFileAsync(DEBUGGER_UI_SCRIPT_PATH);
           res.writeHead(200, "OK", { "Content-Type": "text/javascript" });
+          res.write(`/**
+ * @author EthicDevs <ethicdevs.com>
+ * @name React Global State Hooks Debugger UI
+ * @license MIT
+ * @repository https://github.com/ethicdevs/react-global-state-hook-debugger
+ * @see https://github.com/ethicdevs/react-global-state-hook
+ */
+`);
           res.write(debuggerUiScript);
           res.end();
           break;
