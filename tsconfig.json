@@ -3,11 +3,13 @@
     "baseUrl": ".",
     "target": "es2018",
     "module": "commonjs",
-    "lib": [],
+    "lib": ["ES2020"],
     "declaration": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "paths": { "*": ["types/*"] },
+    "paths": {
+      "*": ["./node_modules/@types/*"]
+    },
 
     // Strict Type-Checking Options
     "strict": true,
@@ -17,6 +19,7 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
+    "skipLibCheck": true,
 
     // Additional Checks
     "noUnusedLocals": true,
@@ -30,5 +33,5 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "exclude": ["./src/**/*.test.ts", "./dist", "./node_modules"]
+  "exclude": ["./src/**/*.test.ts", "./dist", "./node_modules", "node_modules/**"]
 }
