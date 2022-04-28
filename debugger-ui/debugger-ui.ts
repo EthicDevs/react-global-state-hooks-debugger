@@ -40,12 +40,41 @@ function nestedIncludes(
   return mappedEntries.some(([_, v]) => v === true);
 }
 
-function getLogLines(packet: DebuggerPacket): string[] {
+function strToBytesLen(str: string): number {
+  try {
+    return new TextEncoder().encode(str).length;
+  } catch (_) {
+    return -1;
+  }
+}
+
+function humanFileSize(bytes: number, si: boolean = false, dp: number = 1) {
+  const thresh = si ? 1000 : 1024;
+  if (Math.abs(bytes) < thresh) {
+    return bytes + " B";
+  }
+  const units = si
+    ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+  let u = -1;
+  const r = 10 ** dp;
+  do {
+    bytes /= thresh;
+    ++u;
+  } while (
+    Math.round(Math.abs(bytes) * r) / r >= thresh &&
+    u < units.length - 1
+  );
+  return bytes.toFixed(dp) + " " + units[u];
+}
+
+function getLogLines(packet: DebuggerPacket, packetBytes: number): string[] {
   const date = new Date(packet._t).toLocaleString();
   const packetType = packet._d?.type;
+  const packetSize = humanFileSize(packetBytes);
   const maybeActionType = packetType == null ? "" : `${packetType} => `;
   const content = JSON.stringify(packet._d, null, 2);
-  const str = `[${date}]: ${maybeActionType}\n${content}`;
+  const str = `[${date}] (${packetSize}) => ${maybeActionType}\n${content}`;
   const [firstLine, ...otherLines] = str.split("\n");
 
   return [firstLine, ...otherLines];
@@ -126,93 +155,35 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     "#btn-state-toggle-diff-mode",
   );
 
-  actionsInputFilter?.addEventListener("change", function (ev: any) {
-    if (ev.target.value != null) {
-      state.actionsFilterByValue = ev.target.value;
-      console.log("filter::actionsFilterByValue:", state.actionsFilterByValue);
-    }
-  });
-
-  stateInputFilter?.addEventListener("change", function (ev: any) {
-    if (ev.target.value != null) {
-      state.stateFilterByValue = ev.target.value;
-      console.log("filter::stateFilterByValue:", state.stateFilterByValue);
-    }
-  });
-
-  actionsToggleFoldingButton?.addEventListener("click", () => {
-    const allActionNodes = document.querySelectorAll(".log-action");
-    allActionNodes.forEach(makeNodeToggleFolding(state.actionsAllFolded));
-    state.actionsAllFolded = !state.actionsAllFolded;
-  });
-
-  stateToggleFoldingButton?.addEventListener("click", () => {
-    const allStateNodes = document.querySelectorAll(".log-state");
-    allStateNodes.forEach(makeNodeToggleFolding(state.stateAllFolded));
-    state.stateAllFolded = !state.stateAllFolded;
-  });
-
-  stateToggleDiffModeButton?.addEventListener("click", () => {
-    state.stateDiffMode = !state.stateDiffMode;
-    if (stateDiffModeStatus != null) {
-      stateDiffModeStatus.textContent = state.stateDiffMode ? "On" : "Off";
-    }
-  });
-
-  ws.onopen = function open() {
-    ws.send("tail");
+  function log(message: string) {
     if (wsReadyStateEl != null) {
-      wsReadyStateEl.textContent = "connected";
+      wsReadyStateEl.textContent = message;
     }
-  };
-
-  function recreateWebSocket(log?: (message: string) => void) {
-    if (ws.readyState === WS_READY_STATE.Open) {
-      return undefined;
-    }
-
-    if (ws.readyState === WS_READY_STATE.Closed) {
-      log?.(
-        "[rgsh-debugger/ui] Lost connection to debugger. Sleeping 3s before reconnecting...",
-      );
-    }
-    // Give it a grace period of 3s before reconnecting
-    setTimeout(() => {
-      if (ws.readyState !== WS_READY_STATE.Open) {
-        ws = new WebSocket(wsUri);
-      }
-    }, 1000 * 3);
-
-    return undefined;
   }
 
-  ws.onerror = function error(ev) {
-    if (wsReadyStateEl != null) {
-      wsReadyStateEl.textContent = "errored, error: " + (ev as any).message;
-      recreateWebSocket((message) => {
-        wsReadyStateEl.textContent = message;
-      });
-    } else {
-      recreateWebSocket();
-    }
-  };
+  function wsOpen(_: Event) {
+    ws.send("tail");
+    log("Connected!");
+  }
 
-  ws.onclose = function close({ code, reason }) {
+  function wsError(ev: Event, reconnectWebSocket: () => void) {
+    log("Socket error: " + (ev as any).message);
+    reconnectWebSocket();
+  }
+
+  function wsClose(
+    { code, reason }: CloseEvent,
+    reconnectWebSocket: () => void,
+  ) {
     const tags = [`code=${code || "none"}`, `reason=${reason || "none"}`];
+    log(`Connection closed. ${tags.join(" ")}`);
+    reconnectWebSocket();
+  }
 
-    if (wsReadyStateEl != null) {
-      wsReadyStateEl.textContent = `connection closed. ${tags.join(" ")}`;
-      recreateWebSocket((message) => {
-        wsReadyStateEl.textContent = message;
-      });
-    } else {
-      recreateWebSocket();
-    }
-  };
-
-  ws.onmessage = function message(ev) {
-    const data = ev.data.toString();
-    const packet = JSON.parse(data.toString()) as DebuggerPacket;
+  function wsMessage(ev: MessageEvent<any>) {
+    const data: string = ev.data.toString();
+    const packet = JSON.parse(data) as DebuggerPacket;
+    const packetBytes = strToBytesLen(data);
 
     if (packet._k === "action") {
       stats.dispatchedActions += 1;
@@ -262,11 +233,14 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
       };
 
       //logEntry = makeLogEntry(diffPacket);
-      logLines = getLogLines(diffPacket);
+      logLines = getLogLines(
+        diffPacket,
+        strToBytesLen(JSON.stringify(diffPacket)),
+      );
       nodeToUpdate = stateLog;
     } else {
       //logEntry = makeLogEntry(packet);
-      logLines = getLogLines(packet);
+      logLines = getLogLines(packet, packetBytes);
       nodeToUpdate = packet._k === "action" ? actionsLog : stateLog;
     }
 
@@ -301,5 +275,77 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     }
 
     state.lastStateData = packet._d;
-  };
+  }
+
+  function recreateWebSocket(bindEvents: (socket: WebSocket) => void): void {
+    if (ws.readyState === WS_READY_STATE.Open) {
+      return undefined;
+    }
+
+    if (ws.readyState === WS_READY_STATE.Closed) {
+      log("Lost connection to debugger. Sleeping 3s before reconnecting...");
+    }
+
+    // Try reconnecting every 3s
+    let reconnectIntervalId: NodeJS.Timer | null = setInterval(() => {
+      if (ws.readyState === WS_READY_STATE.Closed) {
+        log("Trying to reconnect...");
+        ws = new WebSocket(wsUri);
+      } else if (ws.readyState === WS_READY_STATE.Open) {
+        if (reconnectIntervalId) {
+          clearInterval(reconnectIntervalId);
+          reconnectIntervalId = null;
+          log("Re-connected!");
+          bindEvents(ws);
+          ws.send("tail");
+        }
+      }
+      return undefined;
+    }, 1000 * 3);
+    return undefined;
+  }
+
+  function bindWsEvents(socket: WebSocket): void {
+    socket.onopen = wsOpen;
+    socket.onmessage = wsMessage;
+    socket.onerror = (ev) => {
+      wsError(ev, recreateWebSocket.bind(null, bindWsEvents));
+    };
+    socket.onclose = (ev) => {
+      wsClose(ev, recreateWebSocket.bind(null, bindWsEvents));
+    };
+  }
+
+  bindWsEvents(ws);
+
+  actionsInputFilter?.addEventListener("change", function (ev: any) {
+    if (ev.target.value != null) {
+      state.actionsFilterByValue = ev.target.value;
+    }
+  });
+
+  stateInputFilter?.addEventListener("change", function (ev: any) {
+    if (ev.target.value != null) {
+      state.stateFilterByValue = ev.target.value;
+    }
+  });
+
+  actionsToggleFoldingButton?.addEventListener("click", () => {
+    const allActionNodes = document.querySelectorAll(".log-action");
+    allActionNodes.forEach(makeNodeToggleFolding(state.actionsAllFolded));
+    state.actionsAllFolded = !state.actionsAllFolded;
+  });
+
+  stateToggleFoldingButton?.addEventListener("click", () => {
+    const allStateNodes = document.querySelectorAll(".log-state");
+    allStateNodes.forEach(makeNodeToggleFolding(state.stateAllFolded));
+    state.stateAllFolded = !state.stateAllFolded;
+  });
+
+  stateToggleDiffModeButton?.addEventListener("click", () => {
+    state.stateDiffMode = !state.stateDiffMode;
+    if (stateDiffModeStatus != null) {
+      stateDiffModeStatus.textContent = state.stateDiffMode ? "On" : "Off";
+    }
+  });
 })();

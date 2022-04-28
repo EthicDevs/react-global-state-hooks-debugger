@@ -119,6 +119,11 @@
         font-size: 12px;
       }
 
+      /* Unless fixed, hidden */
+      .row > div > .row-title > .left {
+        display: none;
+      }
+
       .row > div > .row-title > .left > a {
         margin-left: 12px;
         font-weight: bold;
@@ -148,6 +153,7 @@
         display: inline-block;
         vertical-align: middle;
         background-size: contain;
+        filter: invert(1);
         background-position: center center;
         background-repeat: no-repeat;
         background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAACJSURBVEhL7ZC9CYBADEbP2iEEp7JxAPdwBZex02EcQ/0iBCzC/ZlTkDx4RYrLC+cMwzB+QQ1bRRtYwSAbPJQdoRe6bIbS41x32MEg9NULlJakStEBRqMRT44yFF+htDRkdpTJiT+OMilxtSgTE1ePMr54sSgjxYtHmXv8tShD8Qn212QYxnc4dwKskJKEHrOFUQAAAABJRU5ErkJggg==");
@@ -159,6 +165,7 @@
         height: 0.9rem;
         display: inline-block;
         vertical-align: middle;
+        filter: invert(1);
         background-size: contain;
         background-position: center center;
         background-repeat: no-repeat;
