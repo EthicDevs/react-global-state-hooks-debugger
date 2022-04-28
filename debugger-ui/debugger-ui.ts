@@ -281,10 +281,6 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     bindEvents: (socket: WebSocket) => void,
     firstTime?: boolean,
   ): void {
-    if (ws.readyState === WS_READY_STATE.Open) {
-      return undefined;
-    }
-
     if (ws.readyState === WS_READY_STATE.Closed) {
       log("Lost connection to debugger. Sleeping 3s before reconnecting...");
     }
@@ -319,7 +315,8 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     };
   }
 
-  recreateWebSocket(bindWsEvents, true);
+  bindWsEvents(ws);
+  ws.send("tail");
 
   actionsInputFilter?.addEventListener("change", function (ev: any) {
     if (ev.target.value != null) {
