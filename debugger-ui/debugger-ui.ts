@@ -277,7 +277,10 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     state.lastStateData = packet._d;
   }
 
-  function recreateWebSocket(bindEvents: (socket: WebSocket) => void): void {
+  function recreateWebSocket(
+    bindEvents: (socket: WebSocket) => void,
+    firstTime?: boolean,
+  ): void {
     if (ws.readyState === WS_READY_STATE.Open) {
       return undefined;
     }
@@ -289,13 +292,13 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     // Try reconnecting every 3s
     let reconnectIntervalId: NodeJS.Timer | null = setInterval(() => {
       if (ws.readyState === WS_READY_STATE.Closed) {
-        log("Trying to reconnect...");
+        log(`Trying to ${firstTime ? "re" : ""}connect...`);
         ws = new WebSocket(wsUri);
       } else if (ws.readyState === WS_READY_STATE.Open) {
         if (reconnectIntervalId) {
           clearInterval(reconnectIntervalId);
           reconnectIntervalId = null;
-          log("Re-connected!");
+          log(firstTime ? "Connected!" : "Re-connected!");
           bindEvents(ws);
           ws.send("tail");
         }
@@ -316,7 +319,7 @@ const makeNodeToggleFolding = (allFolded: boolean) => (node: any) => {
     };
   }
 
-  bindWsEvents(ws);
+  recreateWebSocket(bindWsEvents, true);
 
   actionsInputFilter?.addEventListener("change", function (ev: any) {
     if (ev.target.value != null) {
