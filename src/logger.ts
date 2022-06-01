@@ -4,16 +4,17 @@ import {
   Logger,
   LoggerType,
 } from "@ethicdevs/react-global-state-hooks";
+import JsonDecycle from "json-decycle";
 
 import { WS_READY_STATE } from "./types";
 import { makeWsClient } from "./ws-client";
 
 function logActionType(action: FluxStandardAction): [string, number, string] {
-  return ["action", Date.now(), JSON.stringify(action)];
+  return ["action", Date.now(), JSON.stringify(action, JsonDecycle.decycle())];
 }
 
 function logStateType(state: FluxBaseState): [string, number, string] {
-  return ["state", Date.now(), JSON.stringify(state)];
+  return ["state", Date.now(), JSON.stringify(state, JsonDecycle.decycle())];
 }
 
 export function makeGetDebuggerLogger(options?: { wsUri?: string }): [
